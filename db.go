@@ -14,19 +14,19 @@ import (
 	"github.com/luno/jettison/jtest"
 )
 
-func Connect(connectStr string) (*sql.DB, error) {
+func Connect(uri string) (*sql.DB, error) {
 	const prefix = "mysql://"
-	if !strings.HasPrefix(connectStr, prefix) {
+	if !strings.HasPrefix(uri, prefix) {
 		return nil, errors.New("connect string missing mysql:// prefix")
 	}
-	connectStr = connectStr[len(prefix):]
+	uri = uri[len(prefix):]
 
-	if connectStr[len(connectStr)-1] != '?' {
-		connectStr += "&"
+	if uri[len(uri)-1] != '?' {
+		uri += "&"
 	}
-	connectStr += defaultOptions()
+	uri += defaultOptions()
 
-	dbc, err := sql.Open("mysql", connectStr)
+	dbc, err := sql.Open("mysql", uri)
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +37,7 @@ func Connect(connectStr string) (*sql.DB, error) {
 // ConnectForTesting returns a connection to a newly created database
 // with migration queries applied. Test cleanup automatically drops the database.
 func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
-	uri := "mysql://root@unix(" + sockFile() + ")/?"
-
-	dbc, err := Connect(uri)
+	dbc, err := Connect(getTestURI())
 	jtest.RequireNil(t, err)
 
 	ctx := context.Background()
@@ -84,4 +82,14 @@ func sockFile() string {
 		return "/var/run/mysqld/mysqld.sock"
 	}
 	return sock
+}
+
+const envTestURI = "TRUSS_TEST_URI"
+
+func getTestURI() string {
+	if uri, ok := os.LookupEnv(envTestURI); ok {
+		return uri
+	}
+
+	return "mysql://root@unix(" + sockFile() + ")/?"
 }
