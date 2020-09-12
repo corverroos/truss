@@ -1,7 +1,7 @@
 package truss_test
 
 import (
-	"github.com/corver/truss"
+	"github.com/corverroos/truss"
 	"testing"
 )
 

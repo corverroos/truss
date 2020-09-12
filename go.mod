@@ -1,4 +1,4 @@
-module github.com/corver/truss
+module github.com/corverroos/truss
 
 go 1.14
 
