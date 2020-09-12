@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
- _ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/luno/jettison/errors"
+	"github.com/luno/jettison/jtest"
 )
 
 func Connect(connectStr string) (*sql.DB, error) {
@@ -35,8 +35,8 @@ func Connect(connectStr string) (*sql.DB, error) {
 	return dbc, nil
 }
 
-func ConnectForTesting(t *testing.T, schemapaths ... string) *sql.DB {
-	uri := "mysql://root@unix("+sockFile()+")/?"
+func ConnectForTesting(t *testing.T, schemapaths ...string) *sql.DB {
+	uri := "mysql://root@unix(" + sockFile() + ")/?"
 
 	dbc, err := Connect(uri)
 	jtest.RequireNil(t, err)
@@ -52,9 +52,9 @@ func ConnectForTesting(t *testing.T, schemapaths ... string) *sql.DB {
 
 	dbName := fmt.Sprintf("test_%d", time.Now().UnixNano())
 
-	_, err = dbc.ExecContext(ctx, "CREATE DATABASE " + dbName + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+" CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
 	jtest.RequireNil(t, err)
-	_, err = dbc.ExecContext(ctx, "USE " + dbName + ";")
+	_, err = dbc.ExecContext(ctx, "USE "+dbName+";")
 	jtest.RequireNil(t, err)
 
 	for _, p := range schemapaths {
@@ -73,7 +73,7 @@ func ConnectForTesting(t *testing.T, schemapaths ... string) *sql.DB {
 	}
 
 	t.Cleanup(func() {
-		_, err = dbc.ExecContext(ctx, "DROP DATABASE " + dbName + ";")
+		_, err = dbc.ExecContext(ctx, "DROP DATABASE "+dbName+";")
 		jtest.RequireNil(t, err)
 
 		jtest.RequireNil(t, dbc.Close())
@@ -81,7 +81,6 @@ func ConnectForTesting(t *testing.T, schemapaths ... string) *sql.DB {
 
 	return dbc
 }
-
 
 func defaultOptions() string {
 	// parseTime: Allows using time.Time for datetime

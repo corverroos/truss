@@ -5,11 +5,12 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/luno/jettison/errors"
+	"github.com/luno/jettison/j"
 )
 
 type migration struct {
@@ -50,14 +51,14 @@ func Migrate(ctx context.Context, dbc *sql.DB, queries []string) error {
 	if len(ml) == 0 && sh != bootstrapHash {
 		return errors.New("bootstrapping failed, hash mismatch, schema not empty?")
 	} else if len(ml) > len(queries) {
-		return errors.New( "more migrations than queries")
+		return errors.New("more migrations than queries")
 	} else if len(ml) > 0 && ml[len(ml)-1].SchemaHash != sh {
-		return errors.New( "schema hash and last migration mismatch")
+		return errors.New("schema hash and last migration mismatch")
 	}
 
 	for i, m := range ml {
 		if m.QueryHash != s2h(queries[i]) {
-			return errors.New( "migration and query mismatch", j.MKV{"i": i})
+			return errors.New("migration and query mismatch", j.MKV{"i": i})
 		}
 	}
 

@@ -2,13 +2,14 @@ package truss
 
 import (
 	"context"
+	"testing"
+
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestMigrateEmpty(t *testing.T) {
-	dbc := ConnectForTesting(t, "")
+	dbc := ConnectForTesting(t)
 	err := Migrate(context.Background(), dbc, nil)
 	jtest.RequireNil(t, err)
 }
@@ -20,12 +21,12 @@ func TestMigrateBasic(t *testing.T) {
 		"CREATE TABLE test3 (id TINYINT, name CHAR(3), PRIMARY KEY(id));",
 	}
 
-	dbc1 := ConnectForTesting(t, "")
+	dbc1 := ConnectForTesting(t)
 	ctx := context.Background()
 
 	err := Migrate(ctx, dbc1, ql)
 	jtest.RequireNil(t, err)
-	
+
 	ml1, err := listMigrations(ctx, dbc1)
 	jtest.RequireNil(t, err)
 	require.Len(t, ml1, 3)
@@ -34,7 +35,7 @@ func TestMigrateBasic(t *testing.T) {
 	jtest.RequireNil(t, err)
 	require.Equal(t, ml1[2].SchemaHash, sh)
 
-	dbc2 := ConnectForTesting(t, "")
+	dbc2 := ConnectForTesting(t)
 
 	for i := 0; i < len(ql); i++ {
 		err := Migrate(ctx, dbc2, ql[:i+1])
@@ -48,20 +49,17 @@ func TestMigrateBasic(t *testing.T) {
 	require.Equal(t, ml1[2].SchemaHash, ml2[2].SchemaHash)
 }
 
-
-
-
 func TestApplyMigration(t *testing.T) {
 	q := "CREATE TABLE test1 (id BIGINT, name VARCHAR(255));"
 
-	dbc := ConnectForTesting(t, "")
+	dbc := ConnectForTesting(t)
 	ctx := context.Background()
 
 	_, err := dbc.ExecContext(ctx, bootstrapQuery)
 	jtest.RequireNil(t, err)
 
 	err = applyMigration(ctx, dbc, q)
-jtest.RequireNil(t, err)
+	jtest.RequireNil(t, err)
 
 	ml, err := listMigrations(ctx, dbc)
 	jtest.RequireNil(t, err)

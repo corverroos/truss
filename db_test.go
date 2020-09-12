@@ -1,11 +1,11 @@
 package truss_test
 
 import (
-	"github.com/corverroos/truss"
 	"testing"
+
+	"github.com/corverroos/truss"
 )
 
 func TestConnectForTesting(t *testing.T) {
-	truss.ConnectForTesting(t,"")
+	truss.ConnectForTesting(t)
 }
-
