@@ -9,9 +9,7 @@ import (
 )
 
 func TestMigrateEmpty(t *testing.T) {
-	dbc := ConnectForTesting(t)
-	err := Migrate(context.Background(), dbc, nil)
-	jtest.RequireNil(t, err)
+	ConnectForTesting(t)
 }
 
 func TestMigrateBasic(t *testing.T) {
@@ -21,11 +19,8 @@ func TestMigrateBasic(t *testing.T) {
 		"CREATE TABLE test3 (id TINYINT, name CHAR(3), PRIMARY KEY(id));",
 	}
 
-	dbc1 := ConnectForTesting(t)
+	dbc1 := ConnectForTesting(t, ql...)
 	ctx := context.Background()
-
-	err := Migrate(ctx, dbc1, ql)
-	jtest.RequireNil(t, err)
 
 	ml1, err := listMigrations(ctx, dbc1)
 	jtest.RequireNil(t, err)
@@ -55,10 +50,7 @@ func TestApplyMigration(t *testing.T) {
 	dbc := ConnectForTesting(t)
 	ctx := context.Background()
 
-	_, err := dbc.ExecContext(ctx, bootstrapQuery)
-	jtest.RequireNil(t, err)
-
-	err = applyMigration(ctx, dbc, q)
+	err := applyMigration(ctx, dbc, q)
 	jtest.RequireNil(t, err)
 
 	ml, err := listMigrations(ctx, dbc)

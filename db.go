@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -35,7 +34,9 @@ func Connect(connectStr string) (*sql.DB, error) {
 	return dbc, nil
 }
 
-func ConnectForTesting(t *testing.T, schemapaths ...string) *sql.DB {
+// ConnectForTesting returns a connection to a newly created database
+// with migration queries applied. Test cleanup automatically drops the database.
+func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 	uri := "mysql://root@unix(" + sockFile() + ")/?"
 
 	dbc, err := Connect(uri)
@@ -57,20 +58,8 @@ func ConnectForTesting(t *testing.T, schemapaths ...string) *sql.DB {
 	_, err = dbc.ExecContext(ctx, "USE "+dbName+";")
 	jtest.RequireNil(t, err)
 
-	for _, p := range schemapaths {
-		schema, err := ioutil.ReadFile(p)
-		jtest.RequireNil(t, err)
-
-		for _, q := range strings.Split(string(schema), ";") {
-			q = strings.TrimSpace(q)
-			if q == "" {
-				continue
-			}
-
-			_, err = dbc.ExecContext(ctx, q)
-			jtest.RequireNil(t, err)
-		}
-	}
+	err = Migrate(ctx, dbc, queries)
+	jtest.RequireNil(t, err)
 
 	t.Cleanup(func() {
 		_, err = dbc.ExecContext(ctx, "DROP DATABASE "+dbName+";")
