@@ -51,7 +51,7 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 	_, err = dbc.ExecContext(ctx, "set time_zone='+00:00';")
 	jtest.RequireNil(t, err)
 
-	dbName := fmt.Sprintf("test_%d", time.Now().UnixNano())
+	dbName := fmt.Sprintf("truss_%d", time.Now().UnixNano())
 
 	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+";")
 	jtest.RequireNil(t, err)
@@ -62,8 +62,16 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 	jtest.RequireNil(t, err)
 
 	t.Cleanup(func() {
-		_, err = dbc.ExecContext(ctx, "DROP DATABASE "+dbName+";")
+		dl, err := queryStrings(ctx, dbc, "SHOW DATABASES")
 		jtest.RequireNil(t, err)
+
+		for _, d := range dl {
+			if !strings.HasPrefix(d, "truss_") {
+				continue
+			}
+			_, err = dbc.ExecContext(ctx, "DROP DATABASE "+d+";")
+			jtest.RequireNil(t, err)
+		}
 
 		jtest.RequireNil(t, dbc.Close())
 	})
