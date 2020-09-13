@@ -30,8 +30,6 @@ CREATE TABLE IF NOT EXISTS migrations (
   PRIMARY KEY (id) 
 );`
 
-const bootstrapHash = "0829c750a08fe4dbb50240e01935494ccefbeb01fa58915406f0057162bf7237"
-
 func Migrate(ctx context.Context, dbc *sql.DB, queries []string) error {
 	_, err := dbc.ExecContext(ctx, bootstrapQuery)
 	if err != nil {
@@ -48,9 +46,7 @@ func Migrate(ctx context.Context, dbc *sql.DB, queries []string) error {
 		return err
 	}
 
-	if len(ml) == 0 && sh != bootstrapHash {
-		return errors.New("bootstrapping failed, hash mismatch, schema not empty?")
-	} else if len(ml) > len(queries) {
+	if len(ml) > len(queries) {
 		return errors.New("more migrations than queries")
 	} else if len(ml) > 0 && ml[len(ml)-1].SchemaHash != sh {
 		return errors.New("schema hash and last migration mismatch")

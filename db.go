@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/jtest"
+	"github.com/stretchr/testify/require"
 )
 
 func Connect(uri string) (*sql.DB, error) {
@@ -51,7 +53,7 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 
 	dbName := fmt.Sprintf("test_%d", time.Now().UnixNano())
 
-	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+" CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+";")
 	jtest.RequireNil(t, err)
 	_, err = dbc.ExecContext(ctx, "USE "+dbName+";")
 	jtest.RequireNil(t, err)
@@ -69,10 +71,33 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 	return dbc
 }
 
+// TestSchema ensures that the schema file is up to date with the queries. It updates
+// it if update is true.
+func TestSchema(t *testing.T, schemapath string, update bool, queries ...string) {
+	dbc := ConnectForTesting(t)
+	ctx := context.Background()
+
+	err := Migrate(ctx, dbc, queries)
+	jtest.RequireNil(t, err)
+
+	schema, err := MakeCreateSchema(ctx, dbc)
+	jtest.RequireNil(t, err)
+
+	if update {
+		err := ioutil.WriteFile(schemapath, []byte(schema), 0644)
+		jtest.RequireNil(t, err)
+		return
+	}
+
+	actual, err := ioutil.ReadFile(schemapath)
+	jtest.RequireNil(t, err)
+
+	require.Equal(t, schema, string(actual))
+}
+
 func defaultOptions() string {
 	// parseTime: Allows using time.Time for datetime
-	// utf8mb4_general_ci: Needed for non-BMP unicode chars (e.g. emoji)
-	return "parseTime=true&collation=utf8mb4_general_ci"
+	return "parseTime=true"
 }
 
 func sockFile() string {
