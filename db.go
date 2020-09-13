@@ -53,7 +53,7 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 
 	dbName := fmt.Sprintf("truss_%d", time.Now().UnixNano())
 
-	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+";")
+	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+" CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;")
 	jtest.RequireNil(t, err)
 	_, err = dbc.ExecContext(ctx, "USE "+dbName+";")
 	jtest.RequireNil(t, err)
