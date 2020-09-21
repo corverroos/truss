@@ -16,19 +16,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Connect(uri string) (*sql.DB, error) {
+func Connect(connectStr string) (*sql.DB, error) {
 	const prefix = "mysql://"
-	if !strings.HasPrefix(uri, prefix) {
+	if !strings.HasPrefix(connectStr, prefix) {
 		return nil, errors.New("connect string missing mysql:// prefix")
 	}
-	uri = uri[len(prefix):]
+	connectStr = connectStr[len(prefix):]
 
-	if uri[len(uri)-1] != '?' {
-		uri += "&"
+	if !strings.Contains(connectStr, "?") {
+		connectStr += "?"
 	}
-	uri += defaultOptions()
+	if !strings.HasSuffix(connectStr, "?") {
+		connectStr += "&"
+	}
 
-	dbc, err := sql.Open("mysql", uri)
+	connectStr += defaultOptions()
+
+	dbc, err := sql.Open("mysql", connectStr)
 	if err != nil {
 		return nil, err
 	}
@@ -39,22 +43,30 @@ func Connect(uri string) (*sql.DB, error) {
 // ConnectForTesting returns a connection to a newly created database
 // with migration queries applied. Test cleanup automatically drops the database.
 func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
-	dbc, err := Connect(getTestURI())
-	jtest.RequireNil(t, err)
-
 	ctx := context.Background()
 
-	// Multiple connections are problematic for unit tests since they
-	// introduce concurrency issues.
-	dbc.SetMaxOpenConns(1)
+	uri := getTestURI()
 
-	_, err = dbc.ExecContext(ctx, "set time_zone='+00:00';")
+	dbc, err := Connect(uri)
 	jtest.RequireNil(t, err)
 
 	dbName := fmt.Sprintf("truss_%d", time.Now().UnixNano())
 
 	_, err = dbc.ExecContext(ctx, "CREATE DATABASE "+dbName+" CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;")
 	jtest.RequireNil(t, err)
+
+	uri += dbName
+
+	dbc, err = Connect(uri)
+	jtest.RequireNil(t, err)
+
+	_, err = dbc.ExecContext(ctx, "set time_zone='+00:00';")
+	jtest.RequireNil(t, err)
+
+	// Multiple connections are problematic for unit tests since they
+	// introduce concurrency issues.
+	dbc.SetMaxOpenConns(1)
+
 	_, err = dbc.ExecContext(ctx, "USE "+dbName+";")
 	jtest.RequireNil(t, err)
 
@@ -117,12 +129,12 @@ func sockFile() string {
 	return sock
 }
 
-const envTestURI = "TRUSS_TEST_URI"
+const envTestURI = "TRUSS_TEST_URI" // Needs to be in format: mysql://user:password@protocol(address)/
 
 func getTestURI() string {
 	if uri, ok := os.LookupEnv(envTestURI); ok {
 		return uri
 	}
 
-	return "mysql://root@unix(" + sockFile() + ")/?"
+	return "mysql://root@unix(" + sockFile() + ")/"
 }
