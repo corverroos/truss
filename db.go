@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -74,18 +75,40 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 	jtest.RequireNil(t, err)
 
 	t.Cleanup(func() {
+		defer dbc.Close()
+
+		// Best effort cleanup any old truss test DBs that are still around.
+		_, err = dbc.ExecContext(ctx, "DROP DATABASE "+dbName+";")
+		if err != nil {
+			// NoReturnErr: Best effort, just return
+			return
+		}
+
 		dl, err := queryStrings(ctx, dbc, "SHOW DATABASES")
-		jtest.RequireNil(t, err)
+		if err != nil {
+			// NoReturnErr: Best effort, just return
+			return
+		}
 
 		for _, d := range dl {
 			if !strings.HasPrefix(d, "truss_") {
 				continue
 			}
+			nano, err := strconv.ParseInt(strings.TrimPrefix(d, "truss_"), 10, 64)
+			if err != nil {
+				// NoReturnErr: Best effort, just return
+				continue
+			}
+			if time.Since(time.Unix(0, nano)) < time.Hour*24 {
+				// Only cleanup very old DBs (avoid races).
+				continue
+			}
 			_, err = dbc.ExecContext(ctx, "DROP DATABASE "+d+";")
-			jtest.RequireNil(t, err)
+			if err != nil {
+				// NoReturnErr: Best effort, just return
+				return
+			}
 		}
-
-		jtest.RequireNil(t, dbc.Close())
 	})
 
 	return dbc

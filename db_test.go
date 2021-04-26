@@ -2,15 +2,14 @@ package truss_test
 
 import (
 	"context"
-	"encoding/hex"
 	"flag"
-	"math/rand"
 	"sync"
 	"testing"
 
-	"github.com/corverroos/truss"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
+
+	"github.com/corverroos/truss"
 )
 
 var update = flag.Bool("update", false, "update schema file")
@@ -54,11 +53,7 @@ func TestMultiConnections(t *testing.T) {
 	wg.Wait()
 }
 
-func genRand(n int) string {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(b)
+func TestEarlyClose(t *testing.T) {
+	dbc := truss.ConnectForTesting(t)
+	jtest.RequireNil(t, dbc.Close())
 }
