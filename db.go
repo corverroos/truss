@@ -3,6 +3,8 @@ package truss
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,11 +13,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 )
+
+var sessionUTC = flag.Bool("truss_utc_session", true, "Sets each new DB session timezone to UTC if true")
 
 func Connect(connectStr string) (*sql.DB, error) {
 	const prefix = "mysql://"
@@ -33,12 +38,39 @@ func Connect(connectStr string) (*sql.DB, error) {
 
 	connectStr += defaultOptions()
 
-	dbc, err := sql.Open("mysql", connectStr)
+	return sql.OpenDB(connector{dns: connectStr}), nil
+}
+
+type connector struct {
+	driver mysql.MySQLDriver
+	dns    string
+}
+
+func (c connector) Connect(ctx context.Context) (driver.Conn, error) {
+	conn, err := c.driver.Open(c.dns)
 	if err != nil {
 		return nil, err
 	}
 
-	return dbc, nil
+	if !*sessionUTC {
+		return conn, nil
+	}
+
+	stmt, err := conn.Prepare("set time_zone='+00:00';")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = stmt.Exec(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func (c connector) Driver() driver.Driver {
+	return c.driver
 }
 
 // ConnectForTesting returns a connection to a newly created database
@@ -61,15 +93,10 @@ func ConnectForTesting(t *testing.T, queries ...string) *sql.DB {
 	dbc, err = Connect(uri)
 	jtest.RequireNil(t, err)
 
-	_, err = dbc.ExecContext(ctx, "set time_zone='+00:00';")
-	jtest.RequireNil(t, err)
-
 	// Multiple connections are problematic for unit tests since they
 	// introduce concurrency issues.
 	dbc.SetMaxOpenConns(1)
-
-	_, err = dbc.ExecContext(ctx, "USE "+dbName+";")
-	jtest.RequireNil(t, err)
+	dbc.SetMaxIdleConns(1)
 
 	err = Migrate(ctx, dbc, queries)
 	jtest.RequireNil(t, err)
